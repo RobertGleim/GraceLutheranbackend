@@ -27,3 +27,29 @@ def create_user():
     
     return jsonify({"message": "User created successfully.", 
                     "user": user_schema.dump(new_user)}), 201
+    
+    
+@users_bp.route('', methods=['GET'])
+def get_users():
+    users = db.session.query(User).all()
+    return users_schema.jsonify(users), 200
+    
+        
+
+@users_bp.route('/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    user = db.session.query(User).get(user_id)
+    if user:
+        return user_schema.jsonify(user), 200
+    return jsonify({"message": "User not found."}), 404
+
+@users_bp.route('/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    user = db.session.query(User).get(user_id)
+    if not user:
+        return jsonify({"message": "User not found."}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "User deleted successfully."}), 200
+

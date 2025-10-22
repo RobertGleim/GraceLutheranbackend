@@ -4,7 +4,7 @@ from app.models import db
 app = create_app('DevelopmentConfig')
 
 with app.app_context():
-    db.drop_all()
+    # db.drop_all() for tersting purposes
     db.create_all()
 
 app.run()
