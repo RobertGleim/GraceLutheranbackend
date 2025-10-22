@@ -34,9 +34,9 @@ def token_required(f):
             request.user_id = int(data['sub'])
 
         except jose.exceptions.ExpiredSignatureError:
-            return jsonify({"message": "Token has expired!"}), 401
+            return jsonify({"error": "Token has expired!"}), 403
         except jose.exceptions.JWTError:
-            return jsonify({"message": "Token is invalid!"}), 401
+            return jsonify({"error": "Token is invalid!"}), 403
         
         return f(*args, **kwargs)
     return decoration
