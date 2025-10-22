@@ -1,13 +1,13 @@
-from flask import request, jsonify, Blueprint
+
+from flask import request, jsonify
 from app.models import User, db
-from app.blueprints.users.schemas import user_schema, users_schema
+from .schemas import user_schema, users_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
+from . import users_bp
 
-users_bp = Blueprint('users_bp', __name__)
 
-
-@users_bp.route('', methods=['POST'], strict_slashes=False)
+@users_bp.route('', methods=['POST'])
 def create_user():
     try:
         data = user_schema.load(request.json)
@@ -16,7 +16,7 @@ def create_user():
     
     data["password"] = generate_password_hash(data["password"])
     
-    user = db.session.query(User).filter_by(User.email == data["email"]).first()
+    user = db.session.query(User).where(User.email == data["email"]).first()
     
     if user: 
         return jsonify({"message": "User with this email already exists."}), 400
@@ -24,6 +24,6 @@ def create_user():
     new_user = User(**data)
     db.session.add(new_user)
     db.session.commit()
-
+    
     return jsonify({"message": "User created successfully.", 
                     "user": user_schema.dump(new_user)}), 201

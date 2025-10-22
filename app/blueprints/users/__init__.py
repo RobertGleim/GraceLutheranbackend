@@ -2,4 +2,4 @@ from flask import Blueprint
 
 users_bp = Blueprint('users_bp', __name__)
 
-from app.blueprints.users import routes
+from . import routes

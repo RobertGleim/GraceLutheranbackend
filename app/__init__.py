@@ -1,8 +1,8 @@
 
 from flask import Flask
-from app.models import db
-from app.extensions import ma
-from app.blueprints.users import users_bp
+from .models import db
+from .extensions import ma
+from .blueprints.users import users_bp
 
 def create_app(config_name):
     

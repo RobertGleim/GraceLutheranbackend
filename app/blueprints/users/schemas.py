@@ -8,5 +8,6 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         include_fk = True
         
         
+        
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)        
