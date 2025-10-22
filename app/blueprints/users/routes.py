@@ -53,3 +53,22 @@ def delete_user(user_id):
     db.session.commit()
     return jsonify({"message": "User deleted successfully."}), 200
 
+@users_bp.route('/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    user =db.session.get(User,user_id)
+    if not user: 
+        return jsonify({"message": "User not found."}), 404
+    try:
+        data = user_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+    
+    data['password'] = generate_password_hash(data['password'])
+    
+    for key, value in data.items():
+        # if key !='email' and key != "password":    if you want to prevent email and password updates for future use 
+            setattr(user, key, value)
+
+    db.session.commit()
+    return jsonify({"message": "User updated successfully.", 
+                    "user": user_schema.dump(user)}), 200
