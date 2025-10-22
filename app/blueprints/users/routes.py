@@ -1,10 +1,27 @@
 
 from flask import request, jsonify
 from app.models import User, db
-from .schemas import user_schema, users_schema
+from app.utils.auth import encode_token
+from .schemas import user_schema, users_schema, login_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import users_bp
+
+
+
+@users_bp.route('/login', methods=['POST'])
+def login():
+    try:
+        data=login_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+    
+    user = db.session.query(User).where(User.email == data["email"]).first()
+    if user and check_password_hash(user.password, data["password"]):
+        token = encode_token(user.id, user.role)
+        return jsonify({"message": "Login successful", "token": token, "user": user_schema.dump(user)}), 200
+    
+    return jsonify({"message": "Invalid email or password."}), 401  
 
 
 @users_bp.route('', methods=['POST'])
