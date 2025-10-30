@@ -1,11 +1,11 @@
 
-
 name: flask gracelutheran CI
 
 on:
   push:
     branches:
-      - [main , master]
+  - main
+  - master
  
  
  jobs:
