@@ -5,4 +5,5 @@ class DevelopmentConfig():
     DEBUG = True
 
 class ProductionConfig():
-    pass
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///app.db'
+    DEBUG = False

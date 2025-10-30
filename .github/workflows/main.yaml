@@ -1,0 +1,37 @@
+
+
+name: flask gracelutheran CI
+
+on:
+  push:
+    branches:
+      - [main , master]
+ 
+ 
+ jobs:
+   build:
+     runs-on: ubuntu-latest
+
+     steps:
+     - name: Checkout code
+     - uses: actions/checkout@v2
+     - name: Set up Python 
+       uses: actions/setup-python@v2
+       with:
+         python-version: 3.12
+     - name: create virtual environment
+       run: |
+         python -m venv venv
+         source venv/bin/activate
+
+     - name: Install dependencies
+       run: |
+         python -m pip install --upgrade pip
+         python -m pip install -r requirements.txt
+      
+     - name: print debug info
+       run: |
+         echo "Python version: $(python --version)"
+         echo "working directory: $(pwd)"
+         echo "contents of working directory: $(ls -la)"
+         echo "contents of site-packages: $(ls -la venv/lib/python*/site-packages)" )"
