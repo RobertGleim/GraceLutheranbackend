@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 from app.models import User
 from functools import wraps
 from flask import request, jsonify
+import os
 
 
-SECRET_KEY = "super secret key"
+SECRET_KEY = os.getenv("SECRET_KEY", "super secret key")
 
 def encode_token (user_id, role):
     payload = {
