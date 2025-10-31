@@ -8,3 +8,6 @@ CORS(app)
 with app.app_context():
     # db.drop_all() for tersting purposes
     db.create_all()
+
+
+# commented out for testing purposes
