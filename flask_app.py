@@ -8,5 +8,3 @@ CORS(app)
 with app.app_context():
     # db.drop_all() for tersting purposes
     db.create_all()
-
-# commenting out for render deployment
