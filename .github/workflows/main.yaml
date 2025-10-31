@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'  # Remove this line if you do not use submodules
 
 
       - name: Set up Python
@@ -46,8 +44,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'  # Remove this line if you do not use submodules
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -75,8 +71,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'  # Remove this line if you do not use submodules
 
       - name: Set up Python
         uses: actions/setup-python@v4
