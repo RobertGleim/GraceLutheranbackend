@@ -1,4 +1,3 @@
-
 from flask import request, jsonify
 from app.models import User, db
 from app.utils.auth import encode_token, token_required
@@ -6,6 +5,12 @@ from .schemas import user_schema, users_schema, login_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import users_bp
+
+
+
+
+
+
 
 
 
@@ -22,7 +27,6 @@ def login():
         return jsonify({"message": "Login successful", "token": token, "user": user_schema.dump(user)}), 200
     
     return jsonify({"message": "Invalid email or password."}), 401  
-
 
 @users_bp.route('', methods=['POST'])
 def create_user():
@@ -44,16 +48,13 @@ def create_user():
     
     return jsonify({"message": "User created successfully.", 
                     "user": user_schema.dump(new_user)}), 201
-    
-    
+
 @users_bp.route('', methods=['GET'])
 @token_required
 def get_users():
     
     users = db.session.query(User).all()
     return users_schema.jsonify(users), 200
-    
-        
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
 @token_required
@@ -64,35 +65,18 @@ def get_user(user_id):
         return user_schema.jsonify(user), 200
     return jsonify({"message": "User not found."}), 404
 
-@users_bp.route('/<int:user_id>', methods=['DELETE'])
+@users_bp.route('/<int:user_id>', methods=['PUT'])
 @token_required
-def delete_user(user_id):
+def update_user_by_id(user_id):
     user = db.session.get(User, user_id)
     if not user:
-        return jsonify({"message": "User not found."}), 404
-
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({"message": "User deleted successfully."}), 200
-
-@users_bp.route('', methods=['PUT'])
-@token_required
-def update_user():
-    user_id = request.user_id
-    user =db.session.get(User,user_id)
-    if not user: 
         return jsonify({"message": "User not found."}), 404
     try:
         data = user_schema.load(request.json)
     except ValidationError as e:
         return jsonify(e.messages), 400
-    
     data['password'] = generate_password_hash(data['password'])
-    
     for key, value in data.items():
-        # if key !='email' and key != "password":    if you want to prevent email and password updates for future use 
-            setattr(user, key, value)
-
+        setattr(user, key, value)
     db.session.commit()
-    return jsonify({"message": "User updated successfully.", 
-                    "user": user_schema.dump(user)}), 200
+    return jsonify({"message": "User updated successfully.", "user": user_schema.dump(user)}), 200

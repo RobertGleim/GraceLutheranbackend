@@ -3,6 +3,7 @@ from app.models import User
 
 
 class UserSchema(ma.SQLAlchemyAutoSchema):
+    email = ma.Email(required=True)
     class Meta:
         model = User
         include_fk = True

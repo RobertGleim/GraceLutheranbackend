@@ -1,0 +1,293 @@
+swagger: '2.0'
+info:
+  version: "0.0.1"
+  title: "Church Backend API"
+  description: API documentation for Church Backend
+
+host: "gracelutheranbacke.onrender.com"
+schemes:
+  - "https"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+
+securityDefinitions:
+  bearerAuth:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+
+paths:
+  /members:
+    post:
+      tags:
+        - "members"
+      summary: "Create a new church member"
+      description: "Register a new member."
+      parameters:
+        - in: "body"
+          name: "Body"
+          description: "Member object"
+          required: true
+          schema:
+            $ref: "#/definitions/MemberInput"
+      responses:
+        201:
+          description: "Member created successfully"
+          schema:
+            $ref: "#/definitions/MemberResponse"
+        400:
+          description: "Invalid input"
+        500:
+          description: "Server error"
+    get:
+      tags:
+        - "members"
+      summary: "Get all members"
+      description: "Retrieve all church members."
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: "A list of members"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/MemberResponse"
+        500:
+          description: "Server error"
+
+  /events:
+    post:
+      tags:
+        - "events"
+      summary: "Create a new event"
+      description: "Add a new church event."
+      parameters:
+        - in: "body"
+          name: "Body"
+          description: "Event object"
+          required: true
+          schema:
+            $ref: "#/definitions/EventInput"
+      responses:
+        201:
+          description: "Event created successfully"
+          schema:
+            $ref: "#/definitions/EventResponse"
+        400:
+          description: "Invalid input"
+        500:
+          description: "Server error"
+    get:
+      tags:
+        - "events"
+      summary: "Get all events"
+      description: "Retrieve all church events."
+      responses:
+        200:
+          description: "A list of events"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/EventResponse"
+        500:
+          description: "Server error"
+
+  /donations:
+    post:
+      tags:
+        - "donations"
+      summary: "Create a new donation"
+      description: "Add a new donation record."
+      parameters:
+        - in: "body"
+          name: "Body"
+          description: "Donation object"
+          required: true
+          schema:
+            $ref: "#/definitions/DonationInput"
+      responses:
+        201:
+          description: "Donation created successfully"
+          schema:
+            $ref: "#/definitions/DonationResponse"
+        400:
+          description: "Invalid input"
+        500:
+          description: "Server error"
+    get:
+      tags:
+        - "donations"
+      summary: "Get all donations"
+      description: "Retrieve all donation records."
+      responses:
+        200:
+          description: "A list of donations"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/DonationResponse"
+        500:
+          description: "Server error"
+
+  /staff:
+    post:
+      tags:
+        - "staff"
+      summary: "Create a new staff member"
+      description: "Register a new staff member."
+      parameters:
+        - in: "body"
+          name: "Body"
+          description: "Staff object"
+          required: true
+          schema:
+            $ref: "#/definitions/StaffInput"
+      responses:
+        201:
+          description: "Staff member created successfully"
+          schema:
+            $ref: "#/definitions/StaffResponse"
+        400:
+          description: "Invalid input"
+        500:
+          description: "Server error"
+    get:
+      tags:
+        - "staff"
+      summary: "Get all staff"
+      description: "Retrieve all staff members."
+      responses:
+        200:
+          description: "A list of staff members"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/StaffResponse"
+        500:
+          description: "Server error"
+
+definitions:
+  MemberInput:
+    type: object
+    properties:
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      address:
+        type: string
+    required:
+      - first_name
+      - last_name
+      - email
+
+  MemberResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      address:
+        type: string
+
+  EventInput:
+    type: object
+    properties:
+      name:
+        type: string
+      date:
+        type: string
+        format: date-time
+      description:
+        type: string
+    required:
+      - name
+      - date
+
+  EventResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      date:
+        type: string
+        format: date-time
+      description:
+        type: string
+
+  DonationInput:
+    type: object
+    properties:
+      member_id:
+        type: integer
+      amount:
+        type: number
+        format: float
+      date:
+        type: string
+        format: date-time
+    required:
+      - member_id
+      - amount
+      - date
+
+  DonationResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      member_id:
+        type: integer
+      amount:
+        type: number
+        format: float
+      date:
+        type: string
+        format: date-time
+
+  StaffInput:
+    type: object
+    properties:
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      role:
+        type: string
+    required:
+      - first_name
+      - last_name
+      - email
+      - role
+
+  StaffResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      email:
+        type: string
+      role:
+        type: string
