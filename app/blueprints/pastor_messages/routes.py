@@ -30,6 +30,40 @@ def create_message():
         "data": pastor_message_schema.dump(new_message)
     }), 201
 
+@pastor_messages_bp.route('/<int:message_id>', methods=['PUT'])
+@token_required
+def update_message(message_id):
+    """Update a pastor message (admin only)"""
+    message = db.session.get(PastorMessage, message_id)
+    
+    if not message:
+        return jsonify({"message": "Pastor message not found."}), 404
+    
+    try:
+        data = request.json
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+    
+    if data.get('is_active', False):
+        db.session.query(PastorMessage).filter(PastorMessage.id != message_id).update({'is_active': False})
+    
+   
+    if 'title' in data:
+        message.title = data['title']
+    if 'content' in data:
+        message.content = data['content']
+    if 'is_active' in data:
+        message.is_active = data['is_active']
+    
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Pastor message updated successfully.",
+        "data": pastor_message_schema.dump(message)
+    }), 200
+
+
+
 
 @pastor_messages_bp.route('/active', methods=['GET'])
 def get_active_message():
@@ -40,3 +74,38 @@ def get_active_message():
         return pastor_message_schema.jsonify(message), 200
     
     return jsonify({"message": "No active pastor message found."}), 404
+
+@pastor_messages_bp.route('/<int:message_id>', methods=['DELETE'])
+@token_required
+def delete_message(message_id):
+    """Delete a pastor message (admin only)"""
+    message = db.session.get(PastorMessage, message_id)
+    
+    if not message:
+        return jsonify({"message": "Pastor message not found."}), 404
+    
+    db.session.delete(message)
+    db.session.commit()
+    
+    return jsonify({"message": "Pastor message deleted successfully."}), 200
+
+@pastor_messages_bp.route('/<int:message_id>/activate', methods=['PATCH'])
+@token_required
+def activate_message(message_id):
+    """Set a specific message as the active one"""
+    message = db.session.get(PastorMessage, message_id)
+    
+    if not message:
+        return jsonify({"message": "Pastor message not found."}), 404
+    
+    # Deactivate all messages
+    db.session.query(PastorMessage).update({'is_active': False})
+    
+    # Activate this message
+    message.is_active = True
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Pastor message activated successfully.",
+        "data": pastor_message_schema.dump(message)
+    }), 200
