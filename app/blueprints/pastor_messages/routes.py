@@ -13,15 +13,14 @@ from app.models import PastorMessage
 def create_message():
     """Create a new pastor message (admin only)"""
     try:
-        data = pastor_message_schema.load(request.json)
+        new_message = pastor_message_schema.load(request.json)
     except ValidationError as e:
         return jsonify(e.messages), 400
     
-    
-    if data.get('is_active', True):
+    # If this message is active, deactivate all others
+    if new_message.is_active:
         db.session.query(PastorMessage).update({'is_active': False})
     
-    new_message = PastorMessage(**data)
     db.session.add(new_message)
     db.session.commit()
     
