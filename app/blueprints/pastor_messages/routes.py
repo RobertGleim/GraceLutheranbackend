@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from app.models import User, db
-from app.utils.auth import encode_token, token_required
+from app.utils.auth import encode_token, token_required, admin_required
 from .schemas import pastor_message_schema, pastor_messages_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,7 +9,7 @@ from app.models import PastorMessage
 
 
 @pastor_messages_bp.route('', methods=['POST'])
-@token_required
+@admin_required
 def create_message():
     """Create a new pastor message (admin only)"""
     try:
@@ -31,7 +31,7 @@ def create_message():
     }), 201
 
 @pastor_messages_bp.route('/<int:message_id>', methods=['PUT'])
-@token_required
+@admin_required
 def update_message(message_id):
     """Update a pastor message (admin only)"""
     message = db.session.get(PastorMessage, message_id)
@@ -50,8 +50,8 @@ def update_message(message_id):
    
     if 'title' in data:
         message.title = data['title']
-    if 'content' in data:
-        message.content = data['content']
+    if 'message' in data:
+        message.message = data['message']
     if 'is_active' in data:
         message.is_active = data['is_active']
     
@@ -65,6 +65,12 @@ def update_message(message_id):
 
 
 
+@pastor_messages_bp.route('', methods=['GET'])
+def get_all_messages():
+    """Get all pastor messages"""
+    messages = db.session.query(PastorMessage).all()
+    return pastor_messages_schema.jsonify(messages), 200
+
 @pastor_messages_bp.route('/active', methods=['GET'])
 def get_active_message():
     """Get the currently active pastor message"""
@@ -76,7 +82,7 @@ def get_active_message():
     return jsonify({"message": "No active pastor message found."}), 404
 
 @pastor_messages_bp.route('/<int:message_id>', methods=['DELETE'])
-@token_required
+@admin_required
 def delete_message(message_id):
     """Delete a pastor message (admin only)"""
     message = db.session.get(PastorMessage, message_id)
@@ -90,7 +96,7 @@ def delete_message(message_id):
     return jsonify({"message": "Pastor message deleted successfully."}), 200
 
 @pastor_messages_bp.route('/<int:message_id>/activate', methods=['PATCH'])
-@token_required
+@admin_required
 def activate_message(message_id):
     """Set a specific message as the active one"""
     message = db.session.get(PastorMessage, message_id)

@@ -1,8 +1,8 @@
-
 from flask import Flask
 from .models import db
 from .extensions import ma
 from .blueprints.users import users_bp
+from .blueprints.pastor_messages import pastor_messages_bp
 
 def create_app(config_name):
     
@@ -15,5 +15,6 @@ def create_app(config_name):
     
    
     app.register_blueprint(users_bp, url_prefix='/users')
+    app.register_blueprint(pastor_messages_bp, url_prefix='/pastor-messages')
 
     return app
