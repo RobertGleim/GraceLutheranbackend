@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from app.models import User, db
-from app.utils.auth import encode_token, token_required, admin_required
+from app.utils.auth import encode_token, admin_required
 from .schemas import pastor_message_schema, pastor_messages_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -65,12 +65,6 @@ def update_message(message_id):
 
 
 
-@pastor_messages_bp.route('', methods=['GET'])
-def get_all_messages():
-    """Get all pastor messages"""
-    messages = db.session.query(PastorMessage).all()
-    return pastor_messages_schema.jsonify(messages), 200
-
 @pastor_messages_bp.route('/active', methods=['GET'])
 def get_active_message():
     """Get the currently active pastor message"""
@@ -80,6 +74,13 @@ def get_active_message():
         return pastor_message_schema.jsonify(message), 200
     
     return jsonify({"message": "No active pastor message found."}), 404
+
+@pastor_messages_bp.route('', methods=['GET'])
+@admin_required
+def get_all_messages():
+    """Get all pastor messages (admin only)"""
+    messages = db.session.query(PastorMessage).all()
+    return pastor_messages_schema.jsonify(messages), 200
 
 @pastor_messages_bp.route('/<int:message_id>', methods=['DELETE'])
 @admin_required
