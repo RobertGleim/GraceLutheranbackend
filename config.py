@@ -12,6 +12,8 @@ class ProductionConfig():
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///app.db'
     SECRET_KEY = os.getenv('SECRET_KEY') or 'super secret key'
     CACHE_TYPE = 'simpleCache'
+    DEBUG = False  # Disable debug in production
+    TESTING = False
 
 class TestingConfig():
   
