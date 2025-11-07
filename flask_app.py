@@ -17,7 +17,8 @@ CORS(app,
      supports_credentials=True, 
      origins=[origin for origin in allowed_origins if origin],
      allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Ensure OPTIONS is included
+     expose_headers=["Content-Type", "Authorization"])
 
 with app.app_context():
     # db.drop_all()  # Uncomment to recreate database
