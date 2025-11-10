@@ -5,41 +5,53 @@ from .schemas import user_schema, users_schema, login_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import users_bp
-from sqlalchemy.exc import IntegrityError  # new import
 
 
 
 @users_bp.route('/login', methods=['POST'])
 def login():
-    print(f"Login attempt - Request data: {request.json}")  # Debug log
-    
+    # ensure JSON payload
+    if not request.is_json:
+        return jsonify({"message": "Expected JSON payload (Content-Type: application/json)."}), 400
+
+    raw_json = request.get_json(silent=True) or {}
+    # log keys only (avoid logging password value)
+    print(f"Login payload keys: {list(raw_json.keys())}")
+
     try:
-        data = login_schema.load(request.json)
+        data = login_schema.load(raw_json)
     except ValidationError as e:
         print(f"Validation error: {e.messages}")  # Debug log
         return jsonify({"message": "Invalid request format", "errors": e.messages}), 400
-    
-    # Case-insensitive email lookup
-    email_lower = data['email'].lower().strip()
-    print(f"Looking for user with email: {email_lower}")  # Debug log
-    # use filter(...) which is more idiomatic and reliable across backends
-    user = db.session.query(User).filter(db.func.lower(User.email) == email_lower).first()
-    
+
+    # require password
+    if not data.get('password'):
+        return jsonify({"message": "Password is required."}), 400
+
+    # prefer email if provided, otherwise fall back to username
+    user = None
+    if data.get('email'):
+        email_lower = data['email'].lower().strip()
+        print(f"Login attempt using email: '{email_lower}'")  # Debug log
+        user = db.session.query(User).filter(db.func.lower(User.email) == email_lower).first()
+    elif data.get('username'):
+        username = data['username'].strip()
+        print(f"Login attempt using username: '{username}'")  # Debug log
+        user = db.session.query(User).filter(User.username == username).first()
+    else:
+        return jsonify({"message": "Either 'email' or 'username' is required."}), 400
+
     if not user:
-        print(f"User not found with email: {email_lower}")  # Debug log
+        print("User lookup failed")  # Debug log
         return jsonify({"message": "Invalid email or password."}), 401
-    
-    print(f"User found: {user.email}, checking password...")  # Debug log
-    password_match = check_password_hash(user.password, data["password"])
+
+    password_match = check_password_hash(user.password, data.get("password", ""))
     print(f"Password match result: {password_match}")  # Debug log
-    
+
     if password_match:
         token = encode_token(user.id, user.role)
-        
-        
-        
         return jsonify({"message": "Login successful", "token": token, "user": user_schema.dump(user)}), 200
-    
+
     print("Password check failed")  # Debug log
     return jsonify({"message": "Invalid email or password."}), 401  
 
@@ -95,70 +107,17 @@ def update_user_by_id(user_id):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"message": "User not found."}), 404
-    try:
-        # allow partial updates so fields like password can be omitted on update
-        data = user_schema.load(request.json, partial=True)
-    except ValidationError as e:
-        return jsonify(e.messages), 400
 
-    # Only hash & set password if provided; otherwise keep existing password
+    # minimal partial update
+    data = user_schema.load(request.json or {}, partial=True)
+
+    # hash password only if provided
     if 'password' in data and data['password']:
         data['password'] = generate_password_hash(data['password'])
     else:
         data.pop('password', None)
 
-    # Prevent changing email — allow same value (case-insensitive) but do not accept a different email.
-    if 'email' in data and data['email']:
-        new_email = data['email'].lower().strip()
-        current_email = (user.email or "").lower().strip()
-        if new_email != current_email:
-            return jsonify({"message": "Email cannot be changed."}), 400
-        # same email provided, remove to avoid setting it again
-        data.pop('email', None)
-
-    for key, value in data.items():
-        setattr(user, key, value)
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"message": "Failed to update user: database constraint error."}), 400
-
-    return jsonify({"message": "User updated successfully.", "user": user_schema.dump(user)}), 200
-
-@users_bp.route('', methods=['PUT'])
-@token_required
-def update_user():
-    """
-    Update a user by id supplied in the request JSON.
-    Body example: { "id": 1, "email": "new@example.com", "password": "newpass" }
-    Allows partial updates; password is optional and only re-hashed if provided.
-    """
-    payload = request.json or {}
-    user_id = payload.get('id')
-    if user_id is None:
-        return jsonify({"message": "User id is required in request body."}), 400
-    try:
-        user_id = int(user_id)
-    except (TypeError, ValueError):
-        return jsonify({"message": "Invalid user id."}), 400
-
-    user = db.session.get(User, user_id)
-    if not user:
-        return jsonify({"message": "User not found."}), 404
-
-    try:
-        data = user_schema.load(payload, partial=True)
-    except ValidationError as e:
-        return jsonify(e.messages), 400
-
-    # Only hash & set password if provided; otherwise keep existing password
-    if 'password' in data and data['password']:
-        data['password'] = generate_password_hash(data['password'])
-    else:
-        data.pop('password', None)
-
-    # Prevent changing email — allow same value (case-insensitive) but do not accept a different email.
+    # do not allow changing email
     if 'email' in data and data['email']:
         new_email = data['email'].lower().strip()
         current_email = (user.email or "").lower().strip()
@@ -168,12 +127,8 @@ def update_user():
 
     for key, value in data.items():
         setattr(user, key, value)
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"message": "Failed to update user: database constraint error."}), 400
 
+    db.session.commit()
     return jsonify({"message": "User updated successfully.", "user": user_schema.dump(user)}), 200
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
