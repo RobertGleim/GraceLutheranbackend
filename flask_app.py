@@ -4,6 +4,7 @@ from flask_cors import CORS
 from flask import jsonify  # added
 from flask import request  # added
 from flask import g  # added
+from flask import make_response  # add near other flask imports
 import time  # added
 import os
 import re
@@ -103,6 +104,28 @@ def method_not_allowed(e):
         "error": "method_not_allowed",
         "message": "The requested URL exists but does not allow that HTTP method. Verify the frontend is using the correct API base URL and HTTP verb."
     }), 405
+
+# Ensure OPTIONS preflight for user endpoints returns required CORS headers.
+@app.route('/users', methods=['OPTIONS'])
+@app.route('/users/<int:user_id>', methods=['OPTIONS'])
+def users_options(user_id=None):
+    # Minimal preflight response — after_request will merge headers too, but return explicit values here
+    resp = make_response("", 200)
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-HTTP-Method-Override"
+    origin = request.headers.get("Origin")
+    # Echo origin for credentialed requests, fallback to wildcard if not present
+    resp.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    return resp
+
+# Provide a clear, deterministic response when PATCH is requested but not implemented.
+@app.route('/users/<int:user_id>', methods=['PATCH'])
+def users_patch(user_id):
+    return jsonify({
+        "error": "not_implemented",
+        "message": "PATCH is not implemented on the backend. Use PUT for full updates or implement PATCH on the server."
+    }), 501
 
 # Minimal timing/logging: record start time in before_request and log response details in after_request.
 @app.before_request
