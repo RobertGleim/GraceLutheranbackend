@@ -45,6 +45,9 @@ for o in allowed_origins:
 # also include known frontend hostnames explicitly
 _frontend_hosts.update({"grace-lutheran.vercel.app", "www.grace-lutheran.vercel.app"})
 
+# expected backend URL to show in the error message (can be set via env)
+_expected_backend = os.getenv("BACKEND_URL", "https://gracelutheranbacke.onrender.com")
+
 # Minimal logging and quick check to surface misconfigured frontend API host
 @app.before_request
 def _log_and_check_request():
@@ -63,7 +66,9 @@ def _log_and_check_request():
         if req_host in _frontend_hosts or origin_host in _frontend_hosts:
             return jsonify({
                 "error": "incorrect_api_host",
-                "message": "This request appears to have reached a frontend host. Verify your frontend's API base URL — it should point to your backend (e.g. https://gracelutheranbacke.onrender.com) not https://grace-lutheran.vercel.app."
+                "detected_host": req_host or origin_host,
+                "expected_backend": _expected_backend,
+                "message": "Request reached a frontend host. Update your frontend's API base URL to the backend listed in 'expected_backend'."
             }), 400
 
 # Add a small health endpoint to verify the backend URL quickly
