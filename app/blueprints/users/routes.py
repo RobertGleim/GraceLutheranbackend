@@ -104,20 +104,32 @@ def get_user(user_id):
 @users_bp.route('/<int:user_id>', methods=['PUT'])
 @token_required
 def update_user_by_id(user_id):
+    """
+    Accept only PUT for full/partial updates.
+    Blank or omitted password will not overwrite existing password.
+    Email cannot be changed (case-insensitive check).
+    """
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"message": "User not found."}), 404
 
-    # minimal partial update
-    data = user_schema.load(request.json or {}, partial=True)
+    # get raw JSON and remove empty password values so validation won't enforce it
+    raw = request.get_json(silent=True) or {}
+    if 'password' in raw:
+        pw = raw.get('password')
+        if pw is None or (isinstance(pw, str) and pw.strip() == ""):
+            raw.pop('password', None)
 
-    # hash password only if provided
+    # validate remaining fields (partial allowed)
+    data = user_schema.load(raw, partial=True)
+
+    # hash password only if provided and not empty
     if 'password' in data and data['password']:
         data['password'] = generate_password_hash(data['password'])
     else:
         data.pop('password', None)
 
-    # do not allow changing email
+    # prevent email changes
     if 'email' in data and data['email']:
         new_email = data['email'].lower().strip()
         current_email = (user.email or "").lower().strip()
@@ -125,6 +137,7 @@ def update_user_by_id(user_id):
             return jsonify({"message": "Email cannot be changed."}), 400
         data.pop('email', None)
 
+    # apply updates
     for key, value in data.items():
         setattr(user, key, value)
 
