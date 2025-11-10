@@ -8,12 +8,6 @@ from . import users_bp
 
 
 
-
-
-
-
-
-
 @users_bp.route('/login', methods=['POST'])
 def login():
     print(f"Login attempt - Request data: {request.json}")  # Debug log
@@ -27,7 +21,8 @@ def login():
     # Case-insensitive email lookup
     email_lower = data['email'].lower().strip()
     print(f"Looking for user with email: {email_lower}")  # Debug log
-    user = db.session.query(User).where(db.func.lower(User.email) == email_lower).first()
+    # use filter(...) which is more idiomatic and reliable across backends
+    user = db.session.query(User).filter(db.func.lower(User.email) == email_lower).first()
     
     if not user:
         print(f"User not found with email: {email_lower}")  # Debug log
@@ -44,6 +39,7 @@ def login():
     print("Password check failed")  # Debug log
     return jsonify({"message": "Invalid email or password."}), 401  
 
+
 @users_bp.route('', methods=['POST'])
 def create_user():
     try:
@@ -56,16 +52,22 @@ def create_user():
     data["password"] = generate_password_hash(data["password"])
     
     # Check for existing email
-    user = db.session.query(User).where(db.func.lower(User.email) == data["email"]).first()
+    user = db.session.query(User).filter(db.func.lower(User.email) == data["email"]).first()
     if user: 
         return jsonify({"message": "User with this email already exists."}), 400
 
     new_user = User(**data)
     db.session.add(new_user)
     db.session.commit()
+
+    # generate token so frontend can immediately use it
+    token = encode_token(new_user.id, new_user.role)
     
-    return jsonify({"message": "User created successfully.", 
-                    "user": user_schema.dump(new_user)}), 201
+    return jsonify({
+        "message": "User created successfully.",
+        "user": user_schema.dump(new_user),
+        "token": token
+    }), 201
 
 @users_bp.route('', methods=['GET'])
 @token_required

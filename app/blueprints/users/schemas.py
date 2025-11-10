@@ -8,8 +8,11 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         model = User
         include_fk = True
         
-        
-        
+# add a simple login schema to avoid relying on the SQLAlchemy auto schema for authentication
+class LoginSchema(ma.Schema):
+    email = ma.Email(required=True)
+    password = ma.String(required=True, load_only=True)
+
 user_schema = UserSchema()
 users_schema = UserSchema(many=True) 
-login_schema = UserSchema(only=("email", "password"))       
+login_schema = LoginSchema()
