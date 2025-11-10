@@ -38,15 +38,17 @@ for o in allowed_origins:
         continue
     try:
         p = urlparse(o)
-        if p.hostname:
+        # skip local hosts so local backend requests are not flagged
+        if p.hostname and p.hostname not in ("localhost", "127.0.0.1"):
             _frontend_hosts.add(p.hostname)
     except Exception:
         pass
-# also include known frontend hostnames explicitly
+# also include known frontend hostnames explicitly (non-local)
 _frontend_hosts.update({"grace-lutheran.vercel.app", "www.grace-lutheran.vercel.app"})
 
 # expected backend URL to show in the error message (can be set via env)
 _expected_backend = os.getenv("BACKEND_URL", "https://gracelutheranbacke.onrender.com")
+_expected_backend_host = urlparse(_expected_backend).hostname or ""
 
 # Minimal logging and quick check to surface misconfigured frontend API host
 @app.before_request
@@ -63,6 +65,11 @@ def _log_and_check_request():
         except Exception:
             origin_host = ""
         req_host = (host.split(":")[0] if host else "")
+
+        # don't flag local hosts or the configured backend host as misconfigured
+        if req_host in ("localhost", "127.0.0.1") or req_host == _expected_backend_host:
+            return None
+
         if req_host in _frontend_hosts or origin_host in _frontend_hosts:
             return jsonify({
                 "error": "incorrect_api_host",
