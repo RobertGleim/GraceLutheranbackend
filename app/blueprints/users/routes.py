@@ -34,6 +34,9 @@ def login():
     
     if password_match:
         token = encode_token(user.id, user.role)
+        
+        
+        
         return jsonify({"message": "Login successful", "token": token, "user": user_schema.dump(user)}), 200
     
     print("Password check failed")  # Debug log
@@ -92,10 +95,21 @@ def update_user_by_id(user_id):
     if not user:
         return jsonify({"message": "User not found."}), 404
     try:
-        data = user_schema.load(request.json)
+        # allow partial updates so fields like password can be omitted on update
+        data = user_schema.load(request.json, partial=True)
     except ValidationError as e:
         return jsonify(e.messages), 400
-    data['password'] = generate_password_hash(data['password'])
+
+    # Only hash & set password if provided; otherwise keep existing password
+    if 'password' in data and data['password']:
+        data['password'] = generate_password_hash(data['password'])
+    else:
+        data.pop('password', None)
+
+    # Normalize email when provided
+    if 'email' in data and data['email']:
+        data['email'] = data['email'].lower().strip()
+
     for key, value in data.items():
         setattr(user, key, value)
     db.session.commit()
