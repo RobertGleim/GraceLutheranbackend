@@ -3,6 +3,8 @@ from app.models import db
 from flask_cors import CORS
 from flask import jsonify  # added
 from flask import request  # added
+from flask import g  # added
+import time  # added
 import os
 import re
 from urllib.parse import urlparse  # added
@@ -27,7 +29,7 @@ origins_list = [localhost_regex] + [origin for origin in allowed_origins if orig
 CORS(app, 
      supports_credentials=True, 
      resources={r"/*": {"origins": origins_list}},
-     allow_headers=["Content-Type", "Authorization"],
+     allow_headers=["Content-Type", "Authorization", "X-HTTP-Method-Override"],  # allow override header for clients
      methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],  # Include PATCH for preflight
      expose_headers=["Content-Type", "Authorization"])
 
@@ -53,6 +55,17 @@ _expected_backend_host = urlparse(_expected_backend).hostname or ""
 # Minimal logging and quick check to surface misconfigured frontend API host
 @app.before_request
 def _log_and_check_request():
+    # Respect X-HTTP-Method-Override from clients that tunnel methods via POST.
+    # Update environ early so request.method reflects the override for routing and checks.
+    override = request.headers.get("X-HTTP-Method-Override")
+    if override:
+        override_up = override.strip().upper()
+        # Only allow safe override values
+        if override_up in ("PUT", "PATCH", "DELETE"):
+            request.environ['REQUEST_METHOD'] = override_up
+            # small debug print to show override was applied
+            print(f"[method-override] applied override -> {override_up}")
+    
     host = request.host
     origin = request.headers.get("Origin", "")
     print(f"[incoming] host={host} origin={origin} method={request.method} path={request.path}")
@@ -90,6 +103,57 @@ def method_not_allowed(e):
         "error": "method_not_allowed",
         "message": "The requested URL exists but does not allow that HTTP method. Verify the frontend is using the correct API base URL and HTTP verb."
     }), 405
+
+# Minimal timing/logging: record start time in before_request and log response details in after_request.
+@app.before_request
+def _start_timer():
+    g._start_time = time.time()
+
+@app.after_request
+def _log_response(response):
+	# Ensure required CORS response headers are present/merged so preflight succeeds
+	# required headers and methods we want to guarantee
+	_required_headers = ["Content-Type", "Authorization", "X-HTTP-Method-Override"]
+	_required_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+
+	# Merge/ensure Access-Control-Allow-Headers
+	existing_headers = response.headers.get("Access-Control-Allow-Headers")
+	if existing_headers:
+		existing_list = [h.strip() for h in existing_headers.split(",") if h.strip()]
+		for h in _required_headers:
+			if h not in existing_list:
+				existing_list.append(h)
+		response.headers["Access-Control-Allow-Headers"] = ", ".join(existing_list)
+	else:
+		response.headers["Access-Control-Allow-Headers"] = ", ".join(_required_headers)
+
+	# Merge/ensure Access-Control-Allow-Methods
+	existing_methods = response.headers.get("Access-Control-Allow-Methods")
+	if existing_methods:
+		existing_m_list = [m.strip().upper() for m in existing_methods.split(",") if m.strip()]
+		for m in _required_methods:
+			if m not in existing_m_list:
+				existing_m_list.append(m)
+		response.headers["Access-Control-Allow-Methods"] = ", ".join(existing_m_list)
+	else:
+		response.headers["Access-Control-Allow-Methods"] = ", ".join(_required_methods)
+
+	# Ensure Access-Control-Allow-Origin is set for credentialed requests (echo Origin when available)
+	if not response.headers.get("Access-Control-Allow-Origin"):
+		origin = request.headers.get("Origin")
+		if origin:
+			response.headers["Access-Control-Allow-Origin"] = origin
+
+	# Compute elapsed time for logging (existing behavior)
+	start = getattr(g, "_start_time", None)
+	elapsed_ms = None
+	if start:
+		elapsed_ms = int((time.time() - start) * 1000)
+
+	cors_header = response.headers.get("Access-Control-Allow-Origin", None)
+	print(f"[response] method={request.method} path={request.path} status={response.status_code} elapsed_ms={elapsed_ms} cors_allow_origin={cors_header}")
+
+	return response
 
 with app.app_context():
     # db.drop_all()  # Uncomment to recreate database
