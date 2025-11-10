@@ -5,6 +5,7 @@ from .schemas import user_schema, users_schema, login_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import users_bp
+from sqlalchemy.exc import IntegrityError  # new import
 
 
 
@@ -106,13 +107,73 @@ def update_user_by_id(user_id):
     else:
         data.pop('password', None)
 
-    # Normalize email when provided
+    # Prevent changing email — allow same value (case-insensitive) but do not accept a different email.
     if 'email' in data and data['email']:
-        data['email'] = data['email'].lower().strip()
+        new_email = data['email'].lower().strip()
+        current_email = (user.email or "").lower().strip()
+        if new_email != current_email:
+            return jsonify({"message": "Email cannot be changed."}), 400
+        # same email provided, remove to avoid setting it again
+        data.pop('email', None)
 
     for key, value in data.items():
         setattr(user, key, value)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"message": "Failed to update user: database constraint error."}), 400
+
+    return jsonify({"message": "User updated successfully.", "user": user_schema.dump(user)}), 200
+
+@users_bp.route('', methods=['PUT'])
+@token_required
+def update_user():
+    """
+    Update a user by id supplied in the request JSON.
+    Body example: { "id": 1, "email": "new@example.com", "password": "newpass" }
+    Allows partial updates; password is optional and only re-hashed if provided.
+    """
+    payload = request.json or {}
+    user_id = payload.get('id')
+    if user_id is None:
+        return jsonify({"message": "User id is required in request body."}), 400
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return jsonify({"message": "Invalid user id."}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"message": "User not found."}), 404
+
+    try:
+        data = user_schema.load(payload, partial=True)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    # Only hash & set password if provided; otherwise keep existing password
+    if 'password' in data and data['password']:
+        data['password'] = generate_password_hash(data['password'])
+    else:
+        data.pop('password', None)
+
+    # Prevent changing email — allow same value (case-insensitive) but do not accept a different email.
+    if 'email' in data and data['email']:
+        new_email = data['email'].lower().strip()
+        current_email = (user.email or "").lower().strip()
+        if new_email != current_email:
+            return jsonify({"message": "Email cannot be changed."}), 400
+        data.pop('email', None)
+
+    for key, value in data.items():
+        setattr(user, key, value)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"message": "Failed to update user: database constraint error."}), 400
+
     return jsonify({"message": "User updated successfully.", "user": user_schema.dump(user)}), 200
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
