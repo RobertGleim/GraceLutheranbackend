@@ -28,7 +28,7 @@ CORS(app,
      supports_credentials=True, 
      resources={r"/*": {"origins": origins_list}},
      allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Ensure OPTIONS is included
+     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],  # Include PATCH for preflight
      expose_headers=["Content-Type", "Authorization"])
 
 # Build a set of frontend hostnames parsed from allowed_origins to compare against incoming Host/Origin.
