@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column, DeclarativeBase
-from sqlalchemy import Column, String, ForeignKey, DATE
-from datetime import date
+from sqlalchemy import Column, String, ForeignKey, DATE, DateTime, func
+from datetime import date, datetime
 
 
 class Base(DeclarativeBase):
@@ -17,6 +17,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(500), nullable=False)
     role: Mapped[str] = mapped_column(String(120), nullable=False, default='user')
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
        
        
 class PastorMessage(Base):

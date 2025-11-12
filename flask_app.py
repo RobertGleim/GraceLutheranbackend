@@ -1,23 +1,23 @@
 from app import create_app
 from app.models import db
 from flask_cors import CORS
-from flask import jsonify  # added
-from flask import request  # added
-from flask import g  # added
-from flask import make_response  # add near other flask imports
-import time  # added
+from flask import jsonify  
+from flask import request  
+from flask import g  
+from flask import make_response  
+import time  
 import os
 import re
-from urllib.parse import urlparse  # added
+from urllib.parse import urlparse  
 
 app = create_app(os.getenv('FLASK_CONFIG', 'DevelopmentConfig'))
 
-# Allow local development and production Vercel frontend
+
 allowed_origins = [
-    "http://localhost:5173",  # Vite dev server
-    "http://127.0.0.1:5173",  # Alternate localhost
-    "https://grace-lutheran.vercel.app",  # Production Vercel URL
-    os.getenv("FRONTEND_URL", "")  # From Render environment variable
+    "http://localhost:5173",  
+    "http://127.0.0.1:5173", 
+    "https://grace-lutheran.vercel.app",  
+    os.getenv("FRONTEND_URL", "")  
 ]
 
 # compiled regex to accept any localhost or 127.0.0.1 with any port (http or https)
