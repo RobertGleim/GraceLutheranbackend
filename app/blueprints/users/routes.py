@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from app.models import User, db
-from app.utils.auth import encode_token, token_required
+from app.utils.auth import encode_token, token_required, admin_required
 from .schemas import user_schema, users_schema, login_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -154,3 +154,37 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": "User deleted successfully."}), 200
+
+@users_bp.route('/<int:user_id>/role', methods=['PATCH'])
+@admin_required
+def update_user_role(user_id):
+    """
+    Update user role and return new token if it's the current user.
+    Admin only endpoint.
+    """
+    data = request.get_json(silent=True) or {}
+    new_role = data.get('role')
+    
+    # Validate role value
+    if new_role not in ['user', 'admin']:
+        return jsonify({"error": "Invalid role. Must be 'user' or 'admin'."}), 400
+    
+    # Get user
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found."}), 404
+    
+    # Update the role
+    user.role = new_role
+    db.session.commit()
+    
+    # If updating current user's role, return new token with updated claims
+    new_token = None
+    if request.user_id == user_id:
+        new_token = encode_token(user.id, user.role)
+    
+    return jsonify({
+        "message": "Role updated successfully.",
+        "user": user_schema.dump(user),
+        "token": new_token  # Only present if updating own role
+    }), 200
