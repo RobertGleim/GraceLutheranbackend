@@ -58,21 +58,26 @@ def login():
 
 @users_bp.route('', methods=['POST'])
 def create_user():
+    # Get raw JSON and normalize email before validation
+    raw_data = request.get_json(silent=True) or {}
+    
+    # Normalize email in the raw data before schema validation
+    if "email" in raw_data and raw_data["email"]:
+        raw_data["email"] = raw_data["email"].lower().strip()
+    
     try:
-        data = user_schema.load(request.json)
+        new_user = user_schema.load(raw_data)
     except ValidationError as e:
         return jsonify({"message": "Invalid request format", "errors": e.messages}), 400 
     
-    # Store email in lowercase for consistency
-    data["email"] = data["email"].lower().strip()
-    data["password"] = generate_password_hash(data["password"])
+    # Hash the password
+    new_user.password = generate_password_hash(raw_data["password"])
     
-    # Check for existing email
-    user = db.session.query(User).filter(db.func.lower(User.email) == data["email"]).first()
-    if user: 
+    # Check for existing email (email is already normalized)
+    existing_user = db.session.query(User).filter(db.func.lower(User.email) == new_user.email).first()
+    if existing_user: 
         return jsonify({"message": "User with this email already exists."}), 400
 
-    new_user = User(**data)
     db.session.add(new_user)
     db.session.commit()
 

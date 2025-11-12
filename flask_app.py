@@ -180,7 +180,7 @@ def _log_response(response):
 	return response
 
 with app.app_context():
-    # db.drop_all()  # Uncomment to recreate database
+    # db.drop_all()  for testing
     db.create_all()
 
 if __name__ == '__main__':
