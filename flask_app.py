@@ -108,6 +108,7 @@ def method_not_allowed(e):
 # Ensure OPTIONS preflight for user endpoints returns required CORS headers.
 @app.route('/users', methods=['OPTIONS'])
 @app.route('/users/<int:user_id>', methods=['OPTIONS'])
+@app.route('/users/<int:user_id>/role', methods=['OPTIONS'])  # Add this line
 def users_options(user_id=None):
     # Minimal preflight response — after_request will merge headers too, but return explicit values here
     resp = make_response("", 200)
