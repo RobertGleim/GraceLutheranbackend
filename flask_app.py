@@ -108,8 +108,11 @@ def method_not_allowed(e):
 # Ensure OPTIONS preflight for user endpoints returns required CORS headers.
 @app.route('/users', methods=['OPTIONS'])
 @app.route('/users/<int:user_id>', methods=['OPTIONS'])
-@app.route('/users/<int:user_id>/role', methods=['OPTIONS'])  # Add this line
-def users_options(user_id=None):
+@app.route('/users/<int:user_id>/role', methods=['OPTIONS'])
+@app.route('/pastor-messages', methods=['OPTIONS'])
+@app.route('/pastor-messages/active', methods=['OPTIONS'])
+@app.route('/pastor-messages/<int:message_id>', methods=['OPTIONS'])
+def options_handler(user_id=None, message_id=None):
     # Minimal preflight response — after_request will merge headers too, but return explicit values here
     resp = make_response("", 200)
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
@@ -180,7 +183,7 @@ def _log_response(response):
 	return response
 
 with app.app_context():
-    # db.drop_all()  for testing
+    db.drop_all()  # Uncomment this to drop all tables
     db.create_all()
 
 if __name__ == '__main__':

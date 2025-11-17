@@ -1,4 +1,3 @@
-
 from flask import Flask
 from .models import db
 from .extensions import ma
@@ -13,8 +12,7 @@ def create_app(config_name):
     db.init_app(app)
     ma.init_app(app)
 
-    
-   
+    # Register blueprints
     app.register_blueprint(users_bp, url_prefix='/users')
     app.register_blueprint(pastor_messages_bp, url_prefix='/pastor-messages')
 
