@@ -32,6 +32,22 @@ def create_app(config_name='DevelopmentConfig'):
         db.create_all()
         initialize_default_admin()
     
+    # Register CLI commands
+    @app.cli.command('reset-admin-password')
+    def reset_admin_password_command():
+        """Reset admin password to default (admin123!)"""
+        from werkzeug.security import generate_password_hash
+        admin = db.session.query(User).filter_by(email="admin@email.com").first()
+        if admin:
+            admin.password = generate_password_hash("admin123!")
+            db.session.commit()
+            print("✓ Admin password reset successfully!")
+            print(f"  Email: {admin.email}")
+            print(f"  Password: admin123!")
+        else:
+            print("✗ Admin user not found!")
+            print("  Run the app to create default admin.")
+    
     return app
 
 
