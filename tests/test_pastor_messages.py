@@ -15,7 +15,7 @@ class TestPastorMessages(unittest.TestCase):
             db.create_all()
             
             # Check if default admin exists, otherwise create test admin
-            self.admin_user = User.query.filter_by(email="admin@email.com").first()
+            self.admin_user = db.session.query(User).filter_by(email="admin@email.com").first()
             if not self.admin_user:
                 self.admin_user = User(
                     username="admin",
