@@ -46,6 +46,13 @@ def reset_admin():
             db.session.add(admin)
             db.session.commit()
             
+            print("=" * 50)
+            print("✓ New admin user created!")
+            print("=" * 50)
+            print(f"Email:    admin@email.com")
+            print(f"Username: admin")
+            print(f"Password: admin123!")
+            print("=" * 50)
             
 
 if __name__ == "__main__":
