@@ -40,7 +40,7 @@ def initialize_default_admin():
     from app.models import User
     from werkzeug.security import generate_password_hash
     
-    admin = User.query.filter_by(email="admin@email.com").first()
+    admin = db.session.query(User).filter_by(email="admin@email.com").first()
     if not admin:
         default_admin = User(
             username="admin",
