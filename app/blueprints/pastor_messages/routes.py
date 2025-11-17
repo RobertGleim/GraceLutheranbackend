@@ -103,3 +103,23 @@ def delete_message(message_id):
     db.session.commit()
     
     return jsonify({"message": "Pastor message deleted successfully."}), 200
+
+@pastor_messages_bp.route('/<int:message_id>/activate', methods=['PATCH', 'POST'])
+@admin_required
+def activate_message(message_id):
+    """Activate a specific pastor message and deactivate all others (admin only)."""
+    message = db.session.get(PastorMessage, message_id)
+    if not message:
+        return jsonify({"message": "Message not found."}), 404
+    
+    # Deactivate all other messages
+    db.session.query(PastorMessage).update({PastorMessage.is_active: False})
+    
+    # Activate the specified message
+    message.is_active = True
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Pastor message activated successfully.",
+        "id": message.id
+    }), 200
