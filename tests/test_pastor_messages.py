@@ -14,14 +14,17 @@ class TestPastorMessages(unittest.TestCase):
             db.drop_all()
             db.create_all()
             
-            # Create admin user
-            self.admin_user = User(
-                username="admin",
-                email="admin@email.com",
-                password=generate_password_hash('admin123'),
-                role="admin"
-            )
-            db.session.add(self.admin_user)
+            # Check if default admin exists, otherwise create test admin
+            self.admin_user = User.query.filter_by(email="admin@email.com").first()
+            if not self.admin_user:
+                self.admin_user = User(
+                    username="admin",
+                    email="admin@email.com",
+                    password=generate_password_hash('admin123!'),
+                    role="admin"
+                )
+                db.session.add(self.admin_user)
+                db.session.commit()
             
             # Create regular user
             self.regular_user = User(
