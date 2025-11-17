@@ -40,14 +40,19 @@ def initialize_default_admin():
     from app.models import User
     from werkzeug.security import generate_password_hash
     
-    admin = db.session.query(User).filter_by(email="admin@email.com").first()
-    if not admin:
-        default_admin = User(
-            username="admin",
-            email="admin@email.com",
-            password=generate_password_hash("admin123!"),
-            role="admin"
-        )
-        db.session.add(default_admin)
-        db.session.commit()
-        print("Default admin user created successfully")
+    try:
+        admin = db.session.query(User).filter_by(email="admin@email.com").first()
+        if not admin:
+            default_admin = User(
+                username="admin",
+                email="admin@email.com",
+                password=generate_password_hash("admin123!"),
+                role="admin"
+            )
+            db.session.add(default_admin)
+            db.session.commit()
+            print("Default admin user created successfully")
+    except Exception as e:
+        # Handle case where tables don't exist yet or have schema mismatch
+        db.session.rollback()
+        print(f"Could not initialize default admin: {e}")
