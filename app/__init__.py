@@ -46,7 +46,7 @@ def initialize_default_admin():
             default_admin = User(
                 username="admin",
                 email="admin@email.com",
-                password=generate_password_hash("admin123!"),
+                password=generate_password_hash("admin123"),  # Changed to admin123 without !
                 role="admin"
             )
             db.session.add(default_admin)
