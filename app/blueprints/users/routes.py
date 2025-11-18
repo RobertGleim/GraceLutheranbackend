@@ -5,6 +5,7 @@ from .schemas import user_schema, users_schema, login_schema
 from marshmallow import ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import users_bp
+import os
 
 
 # Add diagnostic endpoint to check if admin exists
@@ -247,4 +248,32 @@ def update_user_role(user_id):
         "message": "Role updated successfully.",
         "user": user_schema.dump(user),
         "token": new_token  
+    }), 200
+
+# TEMPORARY: Remove this endpoint after fixing the password issue
+@users_bp.route('/reset-admin-password', methods=['POST'])
+def reset_admin_password():
+    """Temporary endpoint to reset admin password. REMOVE AFTER USE!"""
+    data = request.get_json(silent=True) or {}
+    secret = data.get('secret')
+    
+    # Simple protection - set this as environment variable on Render
+    if secret != os.getenv('ADMIN_RESET_SECRET', 'change-me-in-production'):
+        return jsonify({"message": "Unauthorized"}), 401
+    
+    admin = db.session.query(User).filter(db.func.lower(User.email) == 'admin@email.com').first()
+    if not admin:
+        return jsonify({"message": "Admin not found"}), 404
+    
+    new_password = data.get('new_password', 'admin123!')
+    admin.password = generate_password_hash(new_password)
+    db.session.commit()
+    
+    print(f"[ADMIN RESET] Password reset for {admin.email}")
+    print(f"[ADMIN RESET] New hash: {admin.password[:30]}")
+    
+    return jsonify({
+        "message": "Admin password reset successfully",
+        "email": admin.email,
+        "new_password_hint": f"{new_password[:2]}...{new_password[-2:]}"
     }), 200

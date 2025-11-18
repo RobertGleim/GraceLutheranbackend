@@ -183,8 +183,8 @@ def _log_response(response):
 	return response
 
 with app.app_context():
-    # NEVER drop tables in production - THIS DELETES ALL YOUR DATA!
-    # db.drop_all()  # ⚠️ COMMENT THIS OUT IMMEDIATELY
+    # NEVER drop tables in production
+    # db.drop_all()  
     
     # Only create tables if they don't exist
     db.create_all()
@@ -194,21 +194,31 @@ with app.app_context():
     from werkzeug.security import generate_password_hash
     
     admin_email = os.getenv('ADMIN_EMAIL', 'admin@email.com')
+    admin_password = os.getenv('ADMIN_PASSWORD', 'admin123!')
+    admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+    
     admin = db.session.query(User).filter(db.func.lower(User.email) == admin_email.lower()).first()
     
     if not admin:
         print(f"⚠️  Admin user not found. Creating default admin...")
         admin = User(
-            username=os.getenv('ADMIN_USERNAME', 'admin'),
+            username=admin_username,
             email=admin_email,
-            password=generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123!')),
+            password=generate_password_hash(admin_password),
             role='admin'
         )
         db.session.add(admin)
         db.session.commit()
         print(f"✓ Admin user created: {admin_email}")
     else:
-        print(f"✓ Admin user exists: {admin_email}")
+        # FORCE PASSWORD UPDATE on every startup (remove after fixing)
+        print(f"⚠️  Updating admin password hash...")
+        admin.password = generate_password_hash(admin_password)
+        admin.username = admin_username
+        admin.role = 'admin'
+        db.session.commit()
+        print(f"✓ Admin password updated: {admin_email}")
+        print(f"✓ Password hash: {admin.password[:30]}...")
 
 if __name__ == '__main__':
     app.run()
