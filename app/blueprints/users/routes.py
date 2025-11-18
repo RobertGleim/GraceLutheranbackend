@@ -174,23 +174,41 @@ def update_user_by_id(user_id):
     if not user:
         return jsonify({"message": "User not found."}), 404
 
-    
     raw = request.get_json(silent=True) or {}
+    # If password explicitly blank, omit it so we don't overwrite with empty
     if 'password' in raw:
         pw = raw.get('password')
         if pw is None or (isinstance(pw, str) and pw.strip() == ""):
             raw.pop('password', None)
 
-    
-    data = user_schema.load(raw, partial=True)
+    try:
+        loaded = user_schema.load(raw, partial=True)
+    except ValidationError as e:
+        # Return JSON 400 with validation errors instead of raising an exception
+        return jsonify({"message": "Invalid request format", "errors": e.messages}), 400
+    except Exception as e:
+        # Defensive: log and return 400/500 depending on nature
+        print(f"[UPDATE ERROR] Unexpected error during schema.load: {e}")
+        return jsonify({"message": "Invalid request format", "error": str(e)}), 400
 
-    
-    if 'password' in data and data['password']:
-        data['password'] = generate_password_hash(data['password'])
+    # Normalize loaded result to a plain dict. user_schema.load may return a model instance
+    # when load_instance=True. Convert that instance into a dict via dump so downstream logic
+    # can treat `data` uniformly as a dict.
+    if not isinstance(loaded, dict):
+        data = user_schema.dump(loaded)
+    else:
+        data = loaded
+
+    # Handle password hashing if present
+    if 'password' in data and data.get('password'):
+        # hash the raw password value from the incoming payload (raw may be needed if dump masked password)
+        raw_pw = raw.get('password') if isinstance(raw, dict) else None
+        pw_to_hash = raw_pw if raw_pw is not None else data.get('password')
+        data['password'] = generate_password_hash(pw_to_hash)
     else:
         data.pop('password', None)
 
-    
+    # Prevent email change
     if 'email' in data and data['email']:
         new_email = data['email'].lower().strip()
         current_email = (user.email or "").lower().strip()
@@ -198,7 +216,7 @@ def update_user_by_id(user_id):
             return jsonify({"message": "Email cannot be changed."}), 400
         data.pop('email', None)
 
-    
+    # Apply updates to the existing user model
     for key, value in data.items():
         setattr(user, key, value)
 
