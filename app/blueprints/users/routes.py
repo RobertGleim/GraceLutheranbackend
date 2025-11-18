@@ -159,10 +159,16 @@ def get_user(user_id):
     try:
         user = db.session.get(User, user_id)
         if user:
-            return user_schema.jsonify(user), 200
+            # Defensive: ensure user_schema.dump returns a dict, not a model instance
+            user_data = user_schema.dump(user)
+            # Remove password from output if present
+            user_data.pop('password', None)
+            return jsonify(user_data), 200
         return jsonify({"message": "User not found."}), 404
     except Exception as e:
+        import traceback
         print(f"[GET USER ERROR] Exception for user_id={user_id}: {e}")
+        traceback.print_exc()
         return jsonify({"message": "Internal server error", "error": str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['PUT'])
