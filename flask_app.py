@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 app = create_app(os.getenv('FLASK_CONFIG', 'DevelopmentConfig'))
 
-
 allowed_origins = [
     "http://localhost:5173",  
     "http://127.0.0.1:5173", 
@@ -20,13 +19,15 @@ allowed_origins = [
     os.getenv("FRONTEND_URL", "")  
 ]
 
-# compiled regex to accept any localhost or 127.0.0.1 with any port (http or https)
-localhost_regex = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
+# Use a regex string instead of a compiled regex object so Flask-CORS can match origins reliably.
+# Accept any localhost/127.0.0.1 with any port (http or https)
+localhost_regex_str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
-# Build origins list: include the localhost regex first so any localhost:PORT is accepted,
+# Build origins list (strings only) — include the localhost regex string first so any localhost:PORT is accepted,
 # plus any explicitly configured origins.
-origins_list = [localhost_regex] + [origin for origin in allowed_origins if origin]
+origins_list = [localhost_regex_str] + [origin for origin in allowed_origins if origin]
 
+# Pass string origins to Flask-CORS so it applies headers consistently (including for error responses).
 CORS(app, 
      supports_credentials=True, 
      resources={r"/*": {"origins": origins_list}},
@@ -181,6 +182,25 @@ def _log_response(response):
 	print(f"[response] method={request.method} path={request.path} status={response.status_code} elapsed_ms={elapsed_ms} cors_allow_origin={cors_header}")
 
 	return response
+
+# Ensure error responses include CORS headers (helps when a 500 is raised before other handlers)
+from flask import make_response as _make_response
+@app.errorhandler(Exception)
+def _handle_exception(e):
+    # Minimal JSON error for debugging; echo Origin for credentialed CORS requests
+    origin = request.headers.get("Origin")
+    body = {"error": "internal_server_error", "message": str(e)}
+    resp = jsonify(body)
+    resp.status_code = 500
+    # Echo origin for credentialed requests so browser receives Access-Control-Allow-Origin
+    if origin:
+        resp.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-HTTP-Method-Override"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    return resp
 
 with app.app_context():
     # NEVER drop tables in production
