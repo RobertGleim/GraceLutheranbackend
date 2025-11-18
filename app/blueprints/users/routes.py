@@ -156,11 +156,14 @@ def get_users():
 @users_bp.route('/<int:user_id>', methods=['GET'])
 @token_required
 def get_user(user_id):
-
-    user = db.session.get(User, user_id)
-    if user:
-        return user_schema.jsonify(user), 200
-    return jsonify({"message": "User not found."}), 404
+    try:
+        user = db.session.get(User, user_id)
+        if user:
+            return user_schema.jsonify(user), 200
+        return jsonify({"message": "User not found."}), 404
+    except Exception as e:
+        print(f"[GET USER ERROR] Exception for user_id={user_id}: {e}")
+        return jsonify({"message": "Internal server error", "error": str(e)}), 500
 
 @users_bp.route('/<int:user_id>', methods=['PUT'])
 @token_required
