@@ -183,8 +183,8 @@ def _log_response(response):
 	return response
 
 with app.app_context():
-    # NEVER drop tables in production - comment this out completely
-    # db.drop_all()  
+    # NEVER drop tables in production - THIS DELETES ALL YOUR DATA!
+    # db.drop_all()  # ⚠️ COMMENT THIS OUT IMMEDIATELY
     
     # Only create tables if they don't exist
     db.create_all()

@@ -7,25 +7,51 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from . import users_bp
 
 
+# Add diagnostic endpoint to check if admin exists
+@users_bp.route('/check-admin', methods=['GET'])
+def check_admin():
+    """Diagnostic endpoint to verify admin user exists."""
+    admin = db.session.query(User).filter(db.func.lower(User.email) == 'admin@email.com').first()
+    if admin:
+        return jsonify({
+            "exists": True,
+            "email": admin.email,
+            "username": admin.username,
+            "role": admin.role,
+            "has_password": bool(admin.password)
+        }), 200
+    else:
+        all_users = db.session.query(User).all()
+        return jsonify({
+            "exists": False,
+            "total_users": len(all_users),
+            "users": [{"email": u.email, "username": u.username} for u in all_users]
+        }), 200
+
 
 @users_bp.route('/login', methods=['POST'])
 def login():
     
     if not request.is_json:
+        print("[LOGIN ERROR] Request is not JSON")
         return jsonify({"message": "Expected JSON payload (Content-Type: application/json)."}), 400
 
     raw_json = request.get_json(silent=True) or {}
     
     print(f"[LOGIN] Full payload received: {raw_json}")
+    print(f"[LOGIN] Content-Type header: {request.headers.get('Content-Type')}")
+    print(f"[LOGIN] Request data type: {type(raw_json)}")
 
     try:
         data = login_schema.load(raw_json)
+        print(f"[LOGIN] Schema validation passed. Loaded data: {data}")
     except ValidationError as e:
         print(f"[LOGIN ERROR] Validation failed: {e.messages}") 
         return jsonify({"message": "Invalid request format", "errors": e.messages}), 400
 
     # Validate that password exists
-    if not data.get('password'):
+    password = data.get('password', '').strip()
+    if not password:
         print("[LOGIN ERROR] Password missing from request")
         return jsonify({"message": "Password is required."}), 400
 
@@ -41,9 +67,16 @@ def login():
         print(f"[LOGIN] Attempting login with email: '{email_lower}'")
         user = db.session.query(User).filter(db.func.lower(User.email) == email_lower).first()
         if user:
-            print(f"[LOGIN] User found: id={user.id}, email={user.email}, username={user.username}")
+            print(f"[LOGIN] User found: id={user.id}, email={user.email}, username={user.username}, role={user.role}")
+            print(f"[LOGIN] User has password hash: {bool(user.password)}")
+            print(f"[LOGIN] Password hash starts with: {user.password[:20] if user.password else 'NONE'}")
         else:
             print(f"[LOGIN ERROR] No user found with email: '{email_lower}'")
+            # Debug: show all users in database
+            all_users = db.session.query(User).all()
+            print(f"[LOGIN DEBUG] Total users in database: {len(all_users)}")
+            for u in all_users:
+                print(f"[LOGIN DEBUG] User: {u.email}, {u.username}")
     elif data.get('username'):
         username = data['username'].strip()
         print(f"[LOGIN] Attempting login with username: '{username}'")
@@ -58,11 +91,15 @@ def login():
         return jsonify({"message": "Invalid credentials."}), 401
 
     # Verify password
-    password_match = check_password_hash(user.password, data.get("password", ""))
-    print(f"[LOGIN] Password verification: {password_match} for user: {user.email}")
+    print(f"[LOGIN] Attempting password verification for user: {user.email}")
+    print(f"[LOGIN] Password length from request: {len(password)}")
+    password_match = check_password_hash(user.password, password)
+    print(f"[LOGIN] Password verification result: {password_match}")
 
     if not password_match:
         print("[LOGIN ERROR] Authentication failed - incorrect password")
+        # Debug: try with raw password (REMOVE THIS AFTER TESTING)
+        print(f"[LOGIN DEBUG] Raw password from request: '{password}'")
         return jsonify({"message": "Invalid credentials."}), 401
 
     # Success - generate token
