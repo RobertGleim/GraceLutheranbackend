@@ -13,7 +13,8 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         
 # add a simple login schema to avoid relying on the SQLAlchemy auto schema for authentication
 class LoginSchema(ma.Schema):
-    email = ma.Email(required=True)
+    email = ma.Email(required=False)  # Make optional since username can be used instead
+    username = ma.String(required=False)  # Add username field
     password = ma.String(required=True, load_only=True)
 
 user_schema = UserSchema()

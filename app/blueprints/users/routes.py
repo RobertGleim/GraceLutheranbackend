@@ -16,7 +16,7 @@ def login():
 
     raw_json = request.get_json(silent=True) or {}
     
-    print(f"Login payload keys: {list(raw_json.keys())}")
+    print(f"Login payload: {raw_json}")  # Better logging to see full payload
 
     try:
         data = login_schema.load(raw_json)
@@ -24,11 +24,15 @@ def login():
         print(f"Validation error: {e.messages}") 
         return jsonify({"message": "Invalid request format", "errors": e.messages}), 400
 
-    
+    # Validate that password exists
     if not data.get('password'):
         return jsonify({"message": "Password is required."}), 400
 
-    
+    # Validate that at least email or username is provided
+    if not data.get('email') and not data.get('username'):
+        return jsonify({"message": "Either 'email' or 'username' is required."}), 400
+
+    # Lookup user by email or username
     user = None
     if data.get('email'):
         email_lower = data['email'].lower().strip()
@@ -38,23 +42,26 @@ def login():
         username = data['username'].strip()
         print(f"Login attempt using username: '{username}'") 
         user = db.session.query(User).filter(User.username == username).first()
-    else:
-        return jsonify({"message": "Either 'email' or 'username' is required."}), 400
 
     if not user:
-        print("User lookup failed")  
-        return jsonify({"message": "Invalid email or password."}), 401
+        print("User lookup failed - no user found")  
+        return jsonify({"message": "Invalid credentials."}), 401
 
+    # Verify password
     password_match = check_password_hash(user.password, data.get("password", ""))
-    print(f"Password match result: {password_match}")  
+    print(f"Password match result: {password_match} for user: {user.email}")  
 
-    if password_match:
-        token = encode_token(user.id, user.role)
-        return jsonify({"message": "Login successful", "token": token, "user": user_schema.dump(user)}), 200
+    if not password_match:
+        print("Password check failed")  
+        return jsonify({"message": "Invalid credentials."}), 401
 
-    print("Password check failed")  
-    return jsonify({"message": "Invalid email or password."}), 401  
-
+    # Success - generate token
+    token = encode_token(user.id, user.role)
+    return jsonify({
+        "message": "Login successful", 
+        "token": token, 
+        "user": user_schema.dump(user)
+    }), 200
 
 @users_bp.route('', methods=['POST'])
 def create_user():
