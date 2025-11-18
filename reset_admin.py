@@ -16,13 +16,19 @@ def reset_admin():
     app = create_app(config_name)
     
     with app.app_context():
-        # Find admin user by email
-        admin = db.session.query(User).filter_by(email="admin@email.com").first()
+        # Use environment variables or defaults
+        admin_email = os.getenv('ADMIN_EMAIL', 'admin@email.com')
+        admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+        new_password = os.getenv('ADMIN_PASSWORD', 'admin123!')
+        
+        # Find admin user by email (case-insensitive)
+        admin = db.session.query(User).filter(db.func.lower(User.email) == admin_email.lower()).first()
         
         if admin:
             # Update password
-            new_password = "admin123!"
             admin.password = generate_password_hash(new_password)
+            admin.username = admin_username  # Update username too
+            admin.role = 'admin'  # Ensure role is admin
             db.session.commit()
             print("=" * 50)
             print("✓ Admin password has been reset!")
@@ -30,6 +36,7 @@ def reset_admin():
             print(f"Email:    {admin.email}")
             print(f"Username: {admin.username}")
             print(f"Password: {new_password}")
+            print(f"Role:     {admin.role}")
             print("=" * 50)
         else:
             print("=" * 50)
@@ -38,9 +45,9 @@ def reset_admin():
             print("=" * 50)
             
             admin = User(
-                username="admin",
-                email="admin@email.com",
-                password=generate_password_hash("admin123!"),
+                username=admin_username,
+                email=admin_email,
+                password=generate_password_hash(new_password),
                 role="admin"
             )
             db.session.add(admin)
@@ -49,9 +56,10 @@ def reset_admin():
             print("=" * 50)
             print("✓ New admin user created!")
             print("=" * 50)
-            print(f"Email:    admin@email.com")
-            print(f"Username: admin")
-            print(f"Password: admin123!")
+            print(f"Email:    {admin_email}")
+            print(f"Username: {admin_username}")
+            print(f"Password: {new_password}")
+            print(f"Role:     admin")
             print("=" * 50)
             
 

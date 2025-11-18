@@ -16,46 +16,57 @@ def login():
 
     raw_json = request.get_json(silent=True) or {}
     
-    print(f"Login payload: {raw_json}")  # Better logging to see full payload
+    print(f"[LOGIN] Full payload received: {raw_json}")
 
     try:
         data = login_schema.load(raw_json)
     except ValidationError as e:
-        print(f"Validation error: {e.messages}") 
+        print(f"[LOGIN ERROR] Validation failed: {e.messages}") 
         return jsonify({"message": "Invalid request format", "errors": e.messages}), 400
 
     # Validate that password exists
     if not data.get('password'):
+        print("[LOGIN ERROR] Password missing from request")
         return jsonify({"message": "Password is required."}), 400
 
     # Validate that at least email or username is provided
     if not data.get('email') and not data.get('username'):
+        print("[LOGIN ERROR] Neither email nor username provided")
         return jsonify({"message": "Either 'email' or 'username' is required."}), 400
 
     # Lookup user by email or username
     user = None
     if data.get('email'):
         email_lower = data['email'].lower().strip()
-        print(f"Login attempt using email: '{email_lower}'")  
+        print(f"[LOGIN] Attempting login with email: '{email_lower}'")
         user = db.session.query(User).filter(db.func.lower(User.email) == email_lower).first()
+        if user:
+            print(f"[LOGIN] User found: id={user.id}, email={user.email}, username={user.username}")
+        else:
+            print(f"[LOGIN ERROR] No user found with email: '{email_lower}'")
     elif data.get('username'):
         username = data['username'].strip()
-        print(f"Login attempt using username: '{username}'") 
+        print(f"[LOGIN] Attempting login with username: '{username}'")
         user = db.session.query(User).filter(User.username == username).first()
+        if user:
+            print(f"[LOGIN] User found: id={user.id}, email={user.email}, username={user.username}")
+        else:
+            print(f"[LOGIN ERROR] No user found with username: '{username}'")
 
     if not user:
-        print("User lookup failed - no user found")  
+        print("[LOGIN ERROR] Authentication failed - user not found")
         return jsonify({"message": "Invalid credentials."}), 401
 
     # Verify password
     password_match = check_password_hash(user.password, data.get("password", ""))
-    print(f"Password match result: {password_match} for user: {user.email}")  
+    print(f"[LOGIN] Password verification: {password_match} for user: {user.email}")
 
     if not password_match:
-        print("Password check failed")  
+        print("[LOGIN ERROR] Authentication failed - incorrect password")
         return jsonify({"message": "Invalid credentials."}), 401
 
     # Success - generate token
+    print(f"[LOGIN SUCCESS] User {user.email} authenticated successfully")
     token = encode_token(user.id, user.role)
     return jsonify({
         "message": "Login successful", 

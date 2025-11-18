@@ -183,8 +183,32 @@ def _log_response(response):
 	return response
 
 with app.app_context():
-    db.drop_all()  # Uncomment this to drop all tables
+    # NEVER drop tables in production - comment this out completely
+    # db.drop_all()  
+    
+    # Only create tables if they don't exist
     db.create_all()
+    
+    # Ensure admin user exists (create if missing)
+    from app.models import User
+    from werkzeug.security import generate_password_hash
+    
+    admin_email = os.getenv('ADMIN_EMAIL', 'admin@email.com')
+    admin = db.session.query(User).filter(db.func.lower(User.email) == admin_email.lower()).first()
+    
+    if not admin:
+        print(f"⚠️  Admin user not found. Creating default admin...")
+        admin = User(
+            username=os.getenv('ADMIN_USERNAME', 'admin'),
+            email=admin_email,
+            password=generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123!')),
+            role='admin'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print(f"✓ Admin user created: {admin_email}")
+    else:
+        print(f"✓ Admin user exists: {admin_email}")
 
 if __name__ == '__main__':
     app.run()
